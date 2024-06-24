@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Room</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .chat-container {
+            width: 400px;
+            height: 600px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-messages {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-message {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 20px;
+            max-width: 70%;
+        }
+        .chat-message.user {
+            background: #007bff;
+            color: white;
+            align-self: flex-end;
+        }
+        .chat-message.other {
+            background: #f1f1f1;
+            align-self: flex-start;
+        }
+        .chat-input {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+            background: #fff;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            margin-right: 10px;
+        }
+        .chat-input button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        .clear-btn {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        .user-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .user-list li {
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .user-list li.current-user {
+            font-weight: bold;
+            color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Chat Room</h2>
+            <button class="clear-btn" onclick="clearMessages()">Clear Chat</button>
+        </div>
+        <div id="messages" class="chat-messages"></div>
+        <div class="chat-input">
+            <input id="myMessage" autocomplete="off" placeholder="Type a message...">
+            <button onclick="sendMessage()">&#9658;</button>
+        </div>
+        <div class="chat-input">
+            <input id="username" autocomplete="off" placeholder="Enter your username...">
+            <button onclick="setUsername()">Set</button>
+        </div>
+        <div class="chat-header">
+            <h2>Online Users</h2>
+        </div>
+        <ul id="users" class="user-list"></ul>
+    </div>
+
+    <script>
+        var socket = io();
+        var currentUser = '';
+
+        socket.on('connect', function() {
+            currentUser = prompt('Enter your username:');
+            setUsername(currentUser);
+        });
+
+        socket.on('message', function(msg){
+            var messageElement = $('<div class="chat-message">').html('<strong>' + msg.username + ':</strong> ' + msg.message);
+            if (msg.username === currentUser) {
+                messageElement.addClass('user');
+            } else {
+                messageElement.addClass('other');
+            }
+            $('#messages').append(messageElement);
+            $('#messages').scrollTop($('#messages')[0].scrollHeight);
+        });
+
+        socket.on('user_list', function(userList){
+            var users = JSON.parse(userList);
+            $('#users').empty();
+            for (var id in users) {
+                var userElement = $('<li>').text(users[id]);
+                if (users[id] === currentUser) {
+                    userElement.addClass('current-user');
+                }
+                $('#users').append(userElement);
+            }
+        });
+
+        function sendMessage() {
+            var msg = $('#myMessage').val();
+            socket.send(msg);
+            $('#myMessage').val('');
+        }
+
+        function setUsername(username) {
+            if (!username) {
+                username = $('#username').val();
+            }
+            currentUser = username;
+            socket.emit('set_username', username);
+        }
+
+        function clearMessages() {
+            $('#messages').empty();
+        }
+    </script>
+</body>
+</html>
